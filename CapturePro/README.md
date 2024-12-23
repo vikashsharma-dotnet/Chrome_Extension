@@ -4,15 +4,15 @@
    $ python -m venv myenv
    $ myenv\Scripts\activate
 
-# 3. Install the required packages by running pip install -r requirements.txt
+# 2. Install the required packages by running pip install -r requirements.txt
     $ cd CapturePro
     $ pip install -r requirements.txt
 
-# 4. Configure the Db connection in settings.py and make migrations
+# 3. Configure the Db connection in settings.py and make migrations
     $ python manage.py makemigrations
     $ python manage.py migrate
 
-# 5. To run this project run the following command
+# 4. To run this project run the following command
     $ python manage.py runserver
 
 
