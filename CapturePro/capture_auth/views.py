@@ -6,3 +6,9 @@ def signIn(request):
 
 def signUp(request):
     return render(request, "Capture_auth/sign-up.html")
+
+def adminDashboard(request):
+    return render(request, "Admin/admin-dashboard.html")
+
+def userCrud(request):
+    return render(request, "Admin/user.html")
