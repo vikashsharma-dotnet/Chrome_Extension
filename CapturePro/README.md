@@ -1,6 +1,6 @@
 # To run this project install Python 3.10.11 in your system and follow the instructions
 
-# 1. Create a virtual enviorment and activate it by running the following command
+## 1. Create a virtual enviorment and activate it by running the following command
     $ python -m venv myenv
     $ myenv\Scripts\activate
 
