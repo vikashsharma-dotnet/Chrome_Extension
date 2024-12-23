@@ -1,8 +1,8 @@
 # To run this project install Python 3.10.11 in your system and follow the instructions
 
 # 1. Create a virtual enviorment and activate it by running the following command
-   $ python -m venv myenv
-   $ myenv\Scripts\activate
+    $ python -m venv myenv
+    $ myenv\Scripts\activate
 
 # 2. Install the required packages by running pip install -r requirements.txt
     $ cd CapturePro
