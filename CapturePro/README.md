@@ -19,4 +19,4 @@
 
 # For more information contact the devs
     abhay007official@gmail.com
-    vikassharma@cssoftsolutions.com
+    vikashsharma@cssoftsolutions.com
