@@ -11,4 +11,4 @@ def adminDashboard(request):
     return render(request, "Admin/admin-dashboard.html")
 
 def userCrud(request):
-    return render(request, "Admin/user.html")
+    return render(request, "Admin/crud-user.html")
