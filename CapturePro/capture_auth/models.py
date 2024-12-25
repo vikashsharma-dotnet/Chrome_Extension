@@ -1,5 +1,9 @@
+#region imports
 from django.db import models
+#endregion
 
+
+#region user model
 class User(models.Model):
     class RoleChoices(models.TextChoices):
         ADMIN = 'ADMIN', 'Admin'
@@ -21,7 +25,9 @@ class User(models.Model):
 
     def __str__(self):
         return self.username
+#endregion
  
+#region profile models
 class CompanyProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
@@ -42,3 +48,4 @@ class EmployeeProfile(models.Model):
  
     def __str__(self):
         return self.name
+#endregion
