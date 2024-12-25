@@ -1,14 +1,17 @@
+#region imports
 from rest_framework import serializers
 from .models import User, CompanyProfile, EmployeeProfile
 from django.contrib.auth.hashers import make_password
+#endregion
 
+#region user serializers
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'email', 'username', 'password', 'is_active', 'is_verified', 'role']
         extra_kwargs = {
             'password': {'write_only': True},
-            'role': {'read_only': True} 
+            # 'role': {'read_only': True,} 
         }
 
     def create(self, validated_data):
@@ -33,3 +36,6 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeProfile
         fields = '__all__'
+#endregion
+
+
