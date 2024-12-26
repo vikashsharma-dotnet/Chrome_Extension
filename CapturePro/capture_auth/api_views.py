@@ -1,6 +1,7 @@
 #region imports
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.utils.crypto import get_random_string
 from rest_framework import status, generics, permissions, filters
 from .models import User, CompanyProfile, EmployeeProfile
 from .serializers import UserSerializer, CompanyProfileSerializer, EmployeeProfileSerializer
@@ -13,8 +14,64 @@ from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth.hashers import make_password
 #endregion
 
+#region add employee
+class SignUpWithRandomPasswordView(APIView):
+    def post(self, request):
+        # Only accept username and email from the request
+        data = {
+            "username": request.data.get("username"),
+            "email": request.data.get("email"),
+        }
+        if not data["username"] or not data["email"]:
+            return Response(
+                {"error": "Username and email are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        random_password = get_random_string(length=12)  
+        print(f"Generated Random Password: {random_password}")  
+        
+        data["password"] = random_password  
+
+        serializer = UserSerializer(data=data)
+        if serializer.is_valid():
+            user = serializer.save()  
+
+            self.send_confirmation_email(request, user, random_password)
+            return Response(
+                {"message": "User created successfully. Please check your email for confirmation."},
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def send_confirmation_email(self, request, user, password):
+        current_site = get_current_site(request).domain
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = custom_token_generator.make_token(user)
+
+        confirmation_link = f"http://{current_site}{reverse('verify-email', kwargs={'uidb64': uid, 'token': token})}"
+        subject = 'Confirm your email address'
+        message = (
+            f"Hi {user.username},\n\n"
+            f"Your account has been created successfully. Your temporary password is:\n\n"
+            f"{password}\n\n"
+            f"Please confirm your email address by clicking the link below:\n\n"
+            f"{confirmation_link}\n\n"
+            f"Thank you!"
+        )
+
+        send_mail(
+            subject,
+            message,
+            settings.EMAIL_HOST_USER,
+            [user.email],
+            fail_silently=False,
+        )
+
+#endregion
 
 #region authentication
 class SignUpView(APIView):
