@@ -27,6 +27,16 @@ class User(models.Model):
         return self.username
 #endregion
  
+class Membership(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    membership_type = models.CharField(max_length=50)  # e.g., 'Basic', 'Premium'
+    start_date = models.DateTimeField(auto_now_add=True)
+    end_date = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.membership_type}"
+
 #region profile models
 class CompanyProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -49,3 +59,4 @@ class EmployeeProfile(models.Model):
     def __str__(self):
         return self.name
 #endregion
+

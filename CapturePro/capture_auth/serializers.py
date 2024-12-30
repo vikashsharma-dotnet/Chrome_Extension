@@ -1,6 +1,6 @@
 #region imports
 from rest_framework import serializers
-from .models import User, CompanyProfile, EmployeeProfile
+from .models import User, CompanyProfile, EmployeeProfile, Membership
 from django.contrib.auth.hashers import make_password
 #endregion
 
@@ -26,6 +26,16 @@ class UserSerializer(serializers.ModelSerializer):
 
         validated_data['password'] = make_password(validated_data['password'])
         return super().create(validated_data)
+
+class MembershipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Membership
+        fields = ['user', 'membership_type', 'start_date', 'end_date', 'is_active']
+
+    def create(self, validated_data):
+        membership = Membership(**validated_data)
+        membership.save()
+        return membership
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
     class Meta:

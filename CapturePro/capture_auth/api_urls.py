@@ -1,6 +1,6 @@
 #region imports
 from django.urls import path
-from .api_views import SignUpView, SignInView, UserListView, UserDetailView, CompanyProfileViewSet, EmployeeProfileViewSet,EmailVerificationView, SignUpWithRandomPasswordView
+from .api_views import *
 #endregion
 
 #region API urls
@@ -21,6 +21,7 @@ urlpatterns = [
     path('company-profiles/', CompanyProfileViewSet.as_view(), name='company-profile-list'),
     path('employee-profiles/', EmployeeProfileViewSet.as_view(), name='employee-profile-list'),
     #endregion
-
+    path('membership/', MembershipCreateView.as_view(), name='membership-create'),
+    path('membership/<int:pk>/', MembershipDetailView.as_view(), name='membership-detail'),
 ]
 #endregion
