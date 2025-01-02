@@ -3,8 +3,9 @@ from capture_auth import views
 
 urlpatterns = [
 path('',views.employeeDashbord,name="userCemployeedashbordrud"),
-path('signin/', views.signIn, name="signin"), 
+path('signIn/', views.signIn, name="signIn"), 
 path('signup/',views.signUp,name="signup"),
 path('adminDashboard/',views.adminDashboard,name="adminDashboard"),
 path('userCrud/',views.userCrud,name="userCrud"),
+path('subscription/',views.subscription,name="subscription"),
 ]

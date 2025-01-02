@@ -42,3 +42,6 @@ def userCrud(request):
 
 def employeeDashbord(request):
     return render(request, "Employee/employee-dashboard.html")
+
+def subscription(request):
+    return render(request, "Admin/subscription.html")
