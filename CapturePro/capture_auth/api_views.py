@@ -1,10 +1,15 @@
-#region imports
+# region imports
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.utils.crypto import get_random_string
 from rest_framework import status, generics, permissions, filters
-from .models import User, CompanyProfile, EmployeeProfile
-from .serializers import UserSerializer, CompanyProfileSerializer, EmployeeProfileSerializer
+from .models import User, CompanyProfile, EmployeeProfile, VideoRecording
+from .serializers import (
+    UserSerializer,
+    CompanyProfileSerializer,
+    EmployeeProfileSerializer,
+    VideoRecordingSerializer
+)
 from django.contrib.auth.hashers import check_password
 from django.core.mail import send_mail
 from django.urls import reverse
@@ -14,10 +19,88 @@ from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_decode
-from django.contrib.auth.hashers import make_password
-#endregion
+from .models import Membership
+from .serializers import MembershipSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+import re
+import requests
+from rest_framework.permissions import AllowAny, IsAuthenticated
+import logging
+import uuid
+# endregion
 
-#region add employee
+BUNNY_STORAGE_ZONE = 'capture-store'
+BUNNY_API_KEY = '1ade0733-3a01-4e3e-a8918b231011-2270-4549'
+BUNNY_STORAGE_ENDPOINT = f'https://sg.storage.bunnycdn.com/{BUNNY_STORAGE_ZONE}'
+
+# Logger setup
+logger = logging.getLogger(__name__)
+
+class VideoRecordingView(APIView):
+    permission_classes = [IsAuthenticated]  # Only authenticated users can access this view
+
+    def get(self, request):
+        """Retrieve all recordings for the logged-in user."""
+        try:
+            recordings = VideoRecording.objects.filter(user=request.user)
+            serializer = VideoRecordingSerializer(recordings, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error retrieving recordings: {str(e)}")
+            return Response({"error": "Failed to retrieve recordings."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        """Upload a video recording."""
+        title = request.data.get('title')
+        video_file = request.FILES.get('video')
+
+        if not title or not video_file:
+            return Response({"error": "Title and video file are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate file size and format
+        if video_file.size > 1024 * 1024 * 100:  # 100 MB limit
+            return Response({"error": "File size exceeds the limit of 100 MB."}, status=status.HTTP_400_BAD_REQUEST)
+        if not video_file.name.endswith(('.webm', '.mp4', '.mkv')):
+            return Response({"error": "Unsupported file format. Use .webm, .mp4, or .mkv."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate a unique file name
+        original_file_name = video_file.name
+        unique_suffix = uuid.uuid4().hex[:8]  # Generate a random 8-character string
+        file_name = f"{unique_suffix}_{original_file_name}"
+
+        headers = {'AccessKey': BUNNY_API_KEY}
+        upload_url = f"{BUNNY_STORAGE_ENDPOINT}/{file_name}"
+
+        try:
+            # Log upload details
+            logger.info(f"Uploading to Bunny.net: {upload_url}, File: {file_name}")
+
+            # Upload to Bunny.net
+            response = requests.put(upload_url, headers=headers, files={'file': (file_name, video_file)})
+
+            # Debug Bunny.net response
+            logger.info(f"Bunny.net Response: {response.status_code} {response.text}")
+
+            if response.status_code == 201:
+                video_url = f"https://{BUNNY_STORAGE_ZONE}.b-cdn.net/{file_name}"
+
+                # Save video metadata in the database
+                recording = VideoRecording.objects.create(
+                    user=request.user,
+                    title=title,
+                    file_name=file_name,
+                    video_url=video_url
+                )
+                serializer = VideoRecordingSerializer(recording)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                logger.error(f"Failed to upload to Bunny.net: {response.status_code} {response.text}")
+                return Response({"error": "Failed to upload to Bunny.net"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        except Exception as e:
+            logger.error(f"Unexpected error during upload: {str(e)}")
+            return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# region add employee
 class SignUpWithRandomPasswordView(APIView):
     def post(self, request):
         # Only accept username and email from the request
@@ -31,18 +114,20 @@ class SignUpWithRandomPasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        random_password = get_random_string(length=12)  
-        print(f"Generated Random Password: {random_password}")  
-        
-        data["password"] = random_password  
+        random_password = get_random_string(length=12)
+        print(f"Generated Random Password: {random_password}")
+
+        data["password"] = random_password
 
         serializer = UserSerializer(data=data)
         if serializer.is_valid():
-            user = serializer.save()  
+            user = serializer.save()
 
             self.send_confirmation_email(request, user, random_password)
             return Response(
-                {"message": "User created successfully. Please check your email for confirmation."},
+                {
+                    "message": "User created successfully. Please check your email for confirmation."
+                },
                 status=status.HTTP_201_CREATED,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -53,7 +138,7 @@ class SignUpWithRandomPasswordView(APIView):
         token = custom_token_generator.make_token(user)
 
         confirmation_link = f"http://{current_site}{reverse('verify-email', kwargs={'uidb64': uid, 'token': token})}"
-        subject = 'Confirm your email address'
+        subject = "Confirm your email address"
         message = (
             f"Hi {user.username},\n\n"
             f"Your account has been created successfully. Your temporary password is:\n\n"
@@ -71,9 +156,19 @@ class SignUpWithRandomPasswordView(APIView):
             fail_silently=False,
         )
 
-#endregion
 
-#region authentication
+# endregion
+
+class MembershipCreateView(generics.CreateAPIView):
+    queryset = Membership.objects.all()
+    serializer_class = MembershipSerializer
+    permission_classes = [permissions.AllowAny]
+
+class MembershipDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Membership.objects.all()
+    serializer_class = MembershipSerializer
+    permission_classes = [permissions.AllowAny]
+# region authentication
 class SignUpView(APIView):
     def post(self, request):
         serializer = UserSerializer(data=request.data)
@@ -89,7 +184,7 @@ class SignUpView(APIView):
         token = custom_token_generator.make_token(user)
 
         confirmation_link = f"http://{current_site}{reverse('verify-email', kwargs={'uidb64': uid, 'token': token})}"
-        subject = 'Confirm your email address'
+        subject = "Confirm your email address"
         message = f"Hi {user.username},\n\nPlease confirm your email address by clicking the link below:\n\n{confirmation_link}\n\nThank you!"
 
         send_mail(
@@ -102,51 +197,93 @@ class SignUpView(APIView):
 
 class SignInView(APIView):
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
-        
-        # Query the user by username
+        # Get credentials from the request
+        identifier = request.data.get("username")  # Accept either username or email
+        password = request.data.get("password")
+
+        # Validate input
+        if not identifier or not password:
+            return Response(
+                {"error": "Both identifier and password are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if the identifier is an email
+        is_email = re.match(r"[^@]+@[^@]+\.[^@]+", identifier)
+
+        # Query the user by email or username
         try:
-            user = User.objects.get(username=username)
+            if is_email:
+                user = User.objects.get(email=identifier)
+            else:
+                user = User.objects.get(username=identifier)
         except User.DoesNotExist:
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-        
+            return Response(
+                {"error": "Invalid credentials"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
         # Check if the provided password matches the hashed password
         if check_password(password, user.password):
-            return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
-        
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-#endregion
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            
+            # Add custom claims to the token
+            access_token = refresh.access_token
+            access_token["role"] = user.role  # Assuming the `User` model has a `role` field
 
-#region users and profiles
+            return Response(
+                {
+                    "refresh": str(refresh),
+                    "access": str(access_token),
+                    "role": user.role,  # Explicitly include role in the response
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+        )
+# endregion
+
+
+# region users and profiles
 class UserListView(generics.ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [filters.SearchFilter]
-    search_fields = ['username', 'email']
+    search_fields = ["username", "email"]
+
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
 
+
 class CompanyProfileViewSet(generics.ListCreateAPIView):
     queryset = CompanyProfile.objects.all()
     serializer_class = CompanyProfileSerializer
 
+
 class EmployeeProfileViewSet(generics.ListCreateAPIView):
     queryset = EmployeeProfile.objects.all()
     serializer_class = EmployeeProfileSerializer
-#endregion
 
-#region helper methods
+
+# endregion
+
+
+# region helper methods
 class CustomTokenGenerator(PasswordResetTokenGenerator):
     def _make_hash_value(self, user, timestamp):
         # Exclude the `last_login` field
         return f"{user.pk}{user.is_active}{timestamp}"
 
+
 custom_token_generator = CustomTokenGenerator()
+
 
 class EmailVerificationView(APIView):
     def get(self, request, uidb64, token):
@@ -159,6 +296,12 @@ class EmailVerificationView(APIView):
         if user is not None and custom_token_generator.check_token(user, token):
             user.is_verified = True
             user.save()
-            return Response({"message": "Email verified successfully."}, status=status.HTTP_200_OK)
-        return Response({"error": "Invalid token or user ID."}, status=status.HTTP_400_BAD_REQUEST)
-#endregion
+            return Response(
+                {"message": "Email verified successfully."}, status=status.HTTP_200_OK
+            )
+        return Response(
+            {"error": "Invalid token or user ID."}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+# endregion
