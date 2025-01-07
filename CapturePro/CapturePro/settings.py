@@ -27,7 +27,19 @@ SECRET_KEY = 'django-insecure-7h#t4%!6gp%0t@csba%2$neh2_t-!%5rug+$!)sx6--_zpwbun
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '4ba8-14-97-132-58.ngrok-free.app']
+ 
+ 
+CSRF_TRUSTED_ORIGINS = [
+    'https://4ba8-14-97-132-58.ngrok-free.app',
+]
+
+# BUNNYCDN_STORAGE_HOST = 'https://sg.storage.bunnycdn.com'
+# BUNNY_STORAGE_ZONE = 'capturepro1'
+# BUNNY_API_KEY = '248bf619-f665-43a2-8b969290bfec-5307-4215'
+# BUNNY_STORAGE_ENDPOINT = f'{BUNNYCDN_STORAGE_HOST}/{BUNNY_STORAGE_ZONE}'
+
+# BUNNYCDN_STORAGE_HOST = 'storage.bunnycdn.com'
 
 
 # Application definition
@@ -40,7 +52,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'capture_auth.apps.CaptureAuthConfig',
+    'rest_framework',
+    'rest_framework.authtoken',
     "corsheaders",
+    
 ]
 
 AUTH_USER_MODEL='capture_auth.User'
@@ -89,6 +104,8 @@ WSGI_APPLICATION = 'CapturePro.wsgi.application'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
 }
 
@@ -102,7 +119,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'CapturePro',         # database name
         'USER': 'postgres',       # PostgreSQL username
-        'PASSWORD': 'Admin@123',   # PostgreSQL password
+        'PASSWORD': 'Password$1',   # PostgreSQL password
         'HOST': 'localhost',      # Server address
         'PORT': '5432',           # Default PostgreSQL port
     }

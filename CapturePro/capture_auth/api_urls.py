@@ -11,7 +11,7 @@ urlpatterns = [
     #region authorization URL
     path('signup/', SignUpView.as_view(), name='signup'),
     path('signin/', SignInView.as_view(), name='signin'),
-    path('add-employee/', SignUpWithRandomPasswordView.as_view(), name='signin'),
+    path('add-employee/', SignUpWithRandomPasswordView.as_view(), name='add-employee'),
     path('verify-email/<uidb64>/<token>/', EmailVerificationView.as_view(), name='verify-email'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     #endregion

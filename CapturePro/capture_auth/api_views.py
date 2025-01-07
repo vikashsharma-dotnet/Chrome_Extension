@@ -27,10 +27,11 @@ import requests
 from rest_framework.permissions import AllowAny, IsAuthenticated
 import logging
 import uuid
+from django.conf import settings
 # endregion
 
-BUNNY_STORAGE_ZONE = 'capture-store'
-BUNNY_API_KEY = '1ade0733-3a01-4e3e-a8918b231011-2270-4549'
+BUNNY_STORAGE_ZONE = 'capturepro-storage'
+BUNNY_API_KEY = '9848e928-43b4-42d8-8365c0d118ac-241f-41c8'
 BUNNY_STORAGE_ENDPOINT = f'https://sg.storage.bunnycdn.com/{BUNNY_STORAGE_ZONE}'
 
 # Logger setup
@@ -76,7 +77,7 @@ class VideoRecordingView(APIView):
             logger.info(f"Uploading to Bunny.net: {upload_url}, File: {file_name}")
 
             # Upload to Bunny.net
-            response = requests.put(upload_url, headers=headers, files={'file': (file_name, video_file)})
+            response = requests.put(upload_url, headers=headers, data=video_file)  # Changed 'files' to 'data'
 
             # Debug Bunny.net response
             logger.info(f"Bunny.net Response: {response.status_code} {response.text}")
@@ -246,7 +247,6 @@ class SignInView(APIView):
         )
 # endregion
 
-
 # region users and profiles
 class UserListView(generics.ListCreateAPIView):
     queryset = User.objects.all()
@@ -270,10 +270,7 @@ class CompanyProfileViewSet(generics.ListCreateAPIView):
 class EmployeeProfileViewSet(generics.ListCreateAPIView):
     queryset = EmployeeProfile.objects.all()
     serializer_class = EmployeeProfileSerializer
-
-
 # endregion
-
 
 # region helper methods
 class CustomTokenGenerator(PasswordResetTokenGenerator):
@@ -283,7 +280,6 @@ class CustomTokenGenerator(PasswordResetTokenGenerator):
 
 
 custom_token_generator = CustomTokenGenerator()
-
 
 class EmailVerificationView(APIView):
     def get(self, request, uidb64, token):

@@ -19,12 +19,15 @@ File Upload Section START -->
             <div class="col-xl-12">
                 <h2 class="h1 mb-4">Upload Your Files</h2>
                 <div class="card shadow p-4">
-                    <div class="mb-3">
-                        <label for="fileUpload" class="form-label">Choose a file to upload:</label>
-                        <input type="file" class="form-control" id="fileUpload" accept="*">
-                    </div>
-                    <button class="btn btn-primary">Upload</button>
-                    <div id="uploadStatus" class="mt-2"></div>
+                    <form id="uploadForm" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="fileUpload" class="form-label">Choose a file to upload:</label>
+                            <input type="file" class="form-control" id="fileUpload" name="video" accept="video/*">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Upload</button>
+                        <div id="uploadStatus" class="mt-2"></div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -46,7 +49,7 @@ video grid START -->
             </div>
         </div>
 
-        <div class="row">
+        {% comment %} <div class="row">
             <div class="col-12">
                 <div class="row g-4">
                     <!-- Video item -->
@@ -90,7 +93,7 @@ video grid START -->
 
                 </div>
             </div>
-        </div>
+        </div> {% endcomment %}
 
         <!-- Show More Button -->
         <div class="row mt-4">
@@ -104,4 +107,34 @@ video grid START -->
 <!-- =======================
 video grid END -->
 
+<script>
+    document.getElementById('uploadForm').onsubmit = function(event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        const formData = new FormData(this);
+        debugger;
+        const accessToken = localStorage.getItem('access_token'); // Retrieve the token from local storage
+
+        fetch('your_upload_url', {  // Use the actual upload URL
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Authorization': `Bearer ${accessToken}`, // Include the token
+                'X-CSRFToken': '{{ csrf_token }}' // Include CSRF token
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            document.getElementById('uploadStatus').innerText = data.message || data.error;
+        })
+        .catch(error => {
+            document.getElementById('uploadStatus').innerText = 'An error occurred: ' + error.message;
+        });
+    };
+</script>
 {% endblock %}
