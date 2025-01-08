@@ -32,15 +32,13 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '4ba8-14-97-132-58.ngrok-free.app']
  
 CSRF_TRUSTED_ORIGINS = [
     'https://4ba8-14-97-132-58.ngrok-free.app',
+    'https://capturepro.b-cdn.net',
 ]
 
-# BUNNYCDN_STORAGE_HOST = 'https://sg.storage.bunnycdn.com'
-# BUNNY_STORAGE_ZONE = 'capturepro1'
-# BUNNY_API_KEY = '248bf619-f665-43a2-8b969290bfec-5307-4215'
-# BUNNY_STORAGE_ENDPOINT = f'{BUNNYCDN_STORAGE_HOST}/{BUNNY_STORAGE_ZONE}'
-
-# BUNNYCDN_STORAGE_HOST = 'storage.bunnycdn.com'
-
+BUNNYCDN_STORAGE_HOST = 'https://sg.storage.bunnycdn.com'
+BUNNY_STORAGE_ZONE = 'capturepro-storage'
+BUNNY_API_KEY = '9848e928-43b4-42d8-8365c0d118ac-241f-41c8'
+BUNNY_STORAGE_ENDPOINT = f'{BUNNYCDN_STORAGE_HOST}/{BUNNY_STORAGE_ZONE}'
 
 # Application definition
 

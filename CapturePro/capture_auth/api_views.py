@@ -27,18 +27,15 @@ import requests
 from rest_framework.permissions import AllowAny, IsAuthenticated
 import logging
 import uuid
-from django.conf import settings
 # endregion
-
-BUNNY_STORAGE_ZONE = 'capturepro-storage'
-BUNNY_API_KEY = '9848e928-43b4-42d8-8365c0d118ac-241f-41c8'
-BUNNY_STORAGE_ENDPOINT = f'https://sg.storage.bunnycdn.com/{BUNNY_STORAGE_ZONE}'
 
 # Logger setup
 logger = logging.getLogger(__name__)
 
+
 class VideoRecordingView(APIView):
-    permission_classes = [IsAuthenticated]  # Only authenticated users can access this view
+    # Only authenticated users can access this view
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """Retrieve all recordings for the logged-in user."""
@@ -66,24 +63,31 @@ class VideoRecordingView(APIView):
 
         # Generate a unique file name
         original_file_name = video_file.name
-        unique_suffix = uuid.uuid4().hex[:8]  # Generate a random 8-character string
+        # Generate a random 8-character string
+        unique_suffix = uuid.uuid4().hex[:8]
         file_name = f"{unique_suffix}_{original_file_name}"
 
-        headers = {'AccessKey': BUNNY_API_KEY}
-        upload_url = f"{BUNNY_STORAGE_ENDPOINT}/{file_name}"
+        headers = {'AccessKey': settings.BUNNY_API_KEY}
+        upload_url = f"{settings.BUNNY_STORAGE_ENDPOINT}/{file_name}"
 
         try:
             # Log upload details
-            logger.info(f"Uploading to Bunny.net: {upload_url}, File: {file_name}")
+            logger.info(
+                f"Uploading to Bunny.net: {upload_url}, File: {file_name}")
 
             # Upload to Bunny.net
-            response = requests.put(upload_url, headers=headers, data=video_file)  # Changed 'files' to 'data'
+            # Changed 'files' to 'data'
+            response = requests.put(
+                upload_url, headers=headers, data=video_file)
 
             # Debug Bunny.net response
-            logger.info(f"Bunny.net Response: {response.status_code} {response.text}")
+            logger.info(
+                f"Bunny.net Response: {response.status_code} {response.text}")
 
             if response.status_code == 201:
-                video_url = f"https://{BUNNY_STORAGE_ZONE}.b-cdn.net/{file_name}"
+                # video_url = f"https://{settings.BUNNY_STORAGE_ZONE}.b-cdn.net/{file_name}"
+
+                video_url = f"https://capturepro.b-cdn.net/{file_name.replace(' ', '%20')}"
 
                 # Save video metadata in the database
                 recording = VideoRecording.objects.create(
@@ -95,13 +99,31 @@ class VideoRecordingView(APIView):
                 serializer = VideoRecordingSerializer(recording)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
-                logger.error(f"Failed to upload to Bunny.net: {response.status_code} {response.text}")
+                logger.error(
+                    f"Failed to upload to Bunny.net: {response.status_code} {response.text}")
                 return Response({"error": "Failed to upload to Bunny.net"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Exception as e:
             logger.error(f"Unexpected error during upload: {str(e)}")
             return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GetUserVideoRecordingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Retrieve all video recordings for the logged-in user."""
+        try:
+            recordings = VideoRecording.objects.filter(user=request.user)
+            serializer = VideoRecordingSerializer(recordings, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error retrieving user recordings: {str(e)}")
+            return Response({"error": "Failed to retrieve recordings."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # region add employee
+
+
 class SignUpWithRandomPasswordView(APIView):
     def post(self, request):
         # Only accept username and email from the request
@@ -165,11 +187,15 @@ class MembershipCreateView(generics.CreateAPIView):
     serializer_class = MembershipSerializer
     permission_classes = [permissions.AllowAny]
 
+
 class MembershipDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Membership.objects.all()
     serializer_class = MembershipSerializer
     permission_classes = [permissions.AllowAny]
+
 # region authentication
+
+
 class SignUpView(APIView):
     def post(self, request):
         serializer = UserSerializer(data=request.data)
@@ -196,10 +222,12 @@ class SignUpView(APIView):
             fail_silently=False,
         )
 
+
 class SignInView(APIView):
     def post(self, request):
         # Get credentials from the request
-        identifier = request.data.get("username")  # Accept either username or email
+        # Accept either username or email
+        identifier = request.data.get("username")
         password = request.data.get("password")
 
         # Validate input
@@ -228,10 +256,11 @@ class SignInView(APIView):
         if check_password(password, user.password):
             # Generate JWT tokens
             refresh = RefreshToken.for_user(user)
-            
+
             # Add custom claims to the token
             access_token = refresh.access_token
-            access_token["role"] = user.role  # Assuming the `User` model has a `role` field
+            # Assuming the `User` model has a `role` field
+            access_token["role"] = user.role
 
             return Response(
                 {
@@ -248,6 +277,8 @@ class SignInView(APIView):
 # endregion
 
 # region users and profiles
+
+
 class UserListView(generics.ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -273,6 +304,8 @@ class EmployeeProfileViewSet(generics.ListCreateAPIView):
 # endregion
 
 # region helper methods
+
+
 class CustomTokenGenerator(PasswordResetTokenGenerator):
     def _make_hash_value(self, user, timestamp):
         # Exclude the `last_login` field
@@ -280,6 +313,7 @@ class CustomTokenGenerator(PasswordResetTokenGenerator):
 
 
 custom_token_generator = CustomTokenGenerator()
+
 
 class EmailVerificationView(APIView):
     def get(self, request, uidb64, token):
@@ -298,6 +332,4 @@ class EmailVerificationView(APIView):
         return Response(
             {"error": "Invalid token or user ID."}, status=status.HTTP_400_BAD_REQUEST
         )
-
-
 # endregion
